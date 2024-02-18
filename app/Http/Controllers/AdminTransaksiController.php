@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Produk;
 use App\Models\Transaksi;
+use App\Models\TransaksiDetail;
 use Illuminate\Http\Request;
 
 class AdminTransaksiController extends Controller
@@ -28,17 +29,14 @@ class AdminTransaksiController extends Controller
     public function create()
     {
         //
-        $produk = Produk::get();
-
-        $produk_id = request('produk_id');
-        $p_detail = Produk::find($produk_id);
         $data = [
-            'title'     => 'Tambah Transaksi',
-            'produk'    => $produk,
-            'p_detail'  => $p_detail,
-            'content'   => 'admin/transaksi/create'
+            'user_id'   => auth()->user()->id,
+            'kasir_name'   => auth()->user()->name,
+            'total'        => 0
         ];
-        return view('admin.layouts.wrapper', $data);
+        $transaksi = Transaksi::create($data);
+        return redirect('admin/transaksi/' . $transaksi->id . '/edit');
+        
     }
 
     /**
@@ -63,6 +61,47 @@ class AdminTransaksiController extends Controller
     public function edit(string $id)
     {
         //
+        $produk = Produk::get();
+
+        $produk_id = request('produk_id');
+        $p_detail = Produk::find($produk_id);
+
+        $transaksi_detail = TransaksiDetail::whereTransaksiId($id)->get();
+
+        $act = request('act');
+        $qty = request('qty');
+        if ($act == 'min') {
+            if($qty <= 1){
+                $qty = 1;
+            } else {
+                $qty = $qty - 1;
+            }
+        } else {
+            $qty = $qty + 1;
+        }
+
+        $subtotal = 0;
+        if($p_detail){
+            $subtotal = $qty * $p_detail->harga;
+        }
+        
+        $transaksi = Transaksi::find($id);
+
+        $dibayarkan = request('dibayarkan');
+        $kembalian = $dibayarkan - $transaksi->total;
+
+        $data = [
+            'title'             => 'Tambah Transaksi',
+            'produk'            => $produk,
+            'p_detail'          => $p_detail,
+            'qty'               => $qty,
+            'subtotal'          => $subtotal,
+            'transaksi_detail'  => $transaksi_detail,
+            'transaksi'         => $transaksi,
+            'kembalian'         => $kembalian,
+            'content'           => 'admin/transaksi/create'
+        ];
+        return view('admin.layouts.wrapper', $data);
     }
 
     /**
